@@ -1,0 +1,35 @@
+deepin-devicemanager (5.9.7-1+rb1) UNRELEASED; urgency=medium
+
+  * qt5.15.8 rebuild
+
+ -- Packages <packages@deepin.com>  Wed, 15 Feb 2023 09:34:17 +0800
+
+deepin-devicemanager (5.9.7-1) unstable; urgency=medium
+
+  * update
+
+ -- Packages <packages@deepin.com>  Wed, 08 Feb 2023 11:58:08 +0800
+
+deepin-devicemanager (5.9.7) unstable; urgency=medium
+
+  * New version 5.9.7
+
+ -- wangyu <wangyu@uniontech.com>  Wed, 08 Feb 2023 11:07:54 +0800
+
+deepin-devicemanager (5.9.6) unstable; urgency=medium
+
+  * New version 5.9.6
+
+ -- wangyu <wangyu@uniontech.com>  Tue, 07 Feb 2023 17:52:52 +0800
+
+deepin-devicemanager (5.9.5) unstable; urgency=medium
+
+  * New version 5.9.5
+
+ -- wangyu <wangyu@uniontech.com>  Fri, 30 Dec 2022 15:03:18 +0800
+
+deepin-devicemanager (1.0) unstable; urgency=medium
+
+  * Initial release (Closes: #nnnn)  <nnnn is the bug number of your ITP>
+
+ -- unknown <liujuna@uniontech.com>  Thu, 17 Oct 2019 20:26:49 +0800
