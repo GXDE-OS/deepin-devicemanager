@@ -97,29 +97,47 @@ QString HttpDriverInterface::getRequestBoard(QString strManufacturer, QString st
         return QString();
     }
     QString arch = Common::getArchStore();
-    QString strUrl = CommonTools::getUrl() + "?arch=" + arch;
     QString build = getOsBuild();
-    if (!build.isEmpty()) {
-        QString system = build;
+    QString major, minor, strUrl;
+    if (getVersion(major, minor) && major =="25") {
+        strUrl = CommonTools::getUrl() + "?deb_manufacturer=" + strManufacturer;
+        if (!strModels.isEmpty()) {
+            strUrl += "&desc=" + strModels;
+        }
+        strUrl += "&arch=" + arch;
+        if (!build.isEmpty()) {
+            QString system = build;
+            if (build[1] == "1") //专业版通过【产品线类型-产品线版本】方式进行系统构建匹配
+                system = QString("%1-%2").arg(build[1]).arg(build[3]);
+            strUrl += "&system=" + system;
+        }
+        strUrl += "&majorVersion=" + major;
+        strUrl += "&minorVersion=" + minor;
+    } else {
+        strUrl = CommonTools::getUrl() + "?arch=" + arch;
+        if (!build.isEmpty()) {
+            QString system = build;
 
-        if (build[1] == "1") //专业版通过【产品线类型-产品线版本】方式进行系统构建匹配
-            system = QString("%1-%2").arg(build[1]).arg(build[3]);
+            if (build[1] == "1") //专业版通过【产品线类型-产品线版本】方式进行系统构建匹配
+                system = QString("%1-%2").arg(build[1]).arg(build[3]);
 
-        strUrl += "&system=" + system;
+            strUrl += "&system=" + system;
+        }
+
+        if (!strManufacturer.isEmpty()) {
+            strUrl += "&deb_manufacturer=" + strManufacturer;
+        }
+        if (!strModels.isEmpty()) {
+            strUrl += "&product=" + strModels;
+        }
+        if (0 < iClassP) {
+            strUrl += "&class_p=" + QString::number(iClassP);
+        }
+        if (0 < iClass) {
+            strUrl += "&class=" + QString::number(iClass);
+        }
     }
 
-    if (!strManufacturer.isEmpty()) {
-        strUrl += "&deb_manufacturer=" + strManufacturer;
-    }
-    if (!strModels.isEmpty()) {
-        strUrl += "&product=" + strModels;
-    }
-    if (0 < iClassP) {
-        strUrl += "&class_p=" + QString(iClassP);
-    }
-    if (0 < iClass) {
-        strUrl += "&class=" + QString(iClass);
-    }
     return getRequestJson(strUrl);
 }
 
@@ -225,21 +243,28 @@ void HttpDriverInterface::checkDriverInfo(QString strJson, DriverInfo *driverInf
 int HttpDriverInterface::packageInstall(const QString &package_name, const QString &version)
 {
     // 0:没有包 1:版本不一致 2:版本一致
-    QString outInfo = Common::executeClientCmd("apt", QStringList() << "policy" << package_name, QString(), -1);
+    QString outInfo = Common::executeClientCmd("apt", QStringList() << "policy" << package_name, QString(), -1, false);
     if (outInfo.isEmpty())
         return 0;
     QStringList infoList = outInfo.split("\n");
-    if (infoList.size() <= 2 || infoList[1].contains("（") || infoList[1].contains("("))
+    int index = 0;
+    for (int i = 0; i < infoList.size(); i++)
+    {
+        if (infoList[i].startsWith(package_name)) {
+            index = i;
+            break;
+        }
+    }
+    if (infoList.size() <= (2 + index) || infoList[1 + index].contains("（") || infoList[1 + index].contains("("))
         return 0;
-    if (infoList[1].contains(version))
+    if (infoList[1 + index].contains(version))
         return 2;
-    //return 1;
 
-    QRegExp rxlen("(\\d+\\S*)");
-    int pos = rxlen.indexIn(infoList[1]);
+    QRegularExpression rxlen("(\\d+\\S*)");
+    QRegularExpressionMatch match = rxlen.match(infoList[1 + index]);
     QString curVersion;
-    if (pos > -1) {
-        curVersion = rxlen.cap(1);
+    if (match.hasMatch()) {
+        curVersion = match.captured(1);
     }
     // 若当前已安装版本高于推荐版本，不再更新
     if (curVersion >= version)
@@ -264,6 +289,30 @@ QString HttpDriverInterface::getOsBuild()
         }
     }
     return "";
+}
+
+bool HttpDriverInterface::getVersion(QString &major, QString &minor)
+{
+    QFile file("/etc/os-version");
+    if (!file.open(QIODevice::ReadOnly))
+        return false;
+    QString info = file.readAll().data();
+    QStringList lines = info.split("\n");
+    foreach (const QString &line, lines) {
+        if (line.startsWith("MajorVersion")) {
+            QStringList words = line.split("=");
+            if (2 == words.size()) {
+                major = words[1].trimmed();
+            }
+        }
+        if (line.startsWith("MinorVersion")) {
+            QStringList words = line.split("=");
+            if (2 == words.size()) {
+                minor = words[1].trimmed();
+            }
+        }
+    }
+    return !major.isEmpty() && !minor.isEmpty();
 }
 
 bool HttpDriverInterface::convertJsonToDeviceList(QString strJson, QList<RepoDriverInfo> &lstDriverInfo)

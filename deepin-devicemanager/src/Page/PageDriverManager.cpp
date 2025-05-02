@@ -22,13 +22,17 @@
 #include "DDLog.h"
 
 #include <DScrollArea>
-#include <DApplicationHelper>
+#include <DGuiApplicationHelper>
 #include <DApplication>
 #include <DDialog>
 
 #include <QBoxLayout>
 #include <QMetaType>
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)  
 #include <QNetworkConfigurationManager>
+#else
+#include <QNetworkInformation>
+#endif
 #include <QScrollBar>
 #include <QTimer>
 #include <QDateTime>
@@ -804,6 +808,17 @@ void PageDriverManager::scanDevicesInfo(const QString &deviceType, DriverType dr
             info->m_ModelId = device->getVendorOrModelId(device->sysPath(), false);    // model id
             info->m_DriverName = device->driver();                 // 驱动名称
             info->m_Version = device->getDriverVersion();          // 驱动版本
+            if (info->m_VendorId.size() == 4 && !info->m_VendorId.startsWith("0x")) {
+                info->m_VendorId = "0x" + info->m_VendorId;
+            }
+            if (info->m_ModelId.size() == 4 && !info->m_ModelId.startsWith("0x")) {
+                info->m_ModelId = "0x" + info->m_ModelId;
+            }
+            QString vidAndPid = device->getVIDAndPID();
+            if ((info->m_VendorId.isEmpty() || info->m_ModelId.isEmpty()) && vidAndPid.size() == 10 && vidAndPid.startsWith("0x")) {
+                info->m_VendorId = vidAndPid.mid(0,6);
+                info->m_ModelId = "0x" + vidAndPid.mid(6,4);
+            }
 
             qCInfo(appLog) << "m_Name" << info->m_Name;
             qCInfo(appLog) << "m_VendorId" << info->m_VendorId;
@@ -822,7 +837,6 @@ void PageDriverManager::scanDevicesInfo(const QString &deviceType, DriverType dr
                 if (network->isWireless()) {
                     info->m_Type = DR_WiFi;
                 }
-
             }
 
             addDriverInfo(info);
@@ -886,7 +900,10 @@ void PageDriverManager::addToBackupIndex(int index)
 
 void PageDriverManager::removeFromDriverIndex(int index)
 {
-    m_ListDriverIndex.removeAt(m_ListDriverIndex.indexOf(index));
+    auto ret = m_ListDriverIndex.indexOf(index);
+    if (ret >= 0) {
+        m_ListDriverIndex.removeAt(ret);
+    }
 
     // 移除时 如果一个都没有 则一键安装按钮置灰
     if (m_ListDriverIndex.isEmpty()) {
@@ -896,7 +913,10 @@ void PageDriverManager::removeFromDriverIndex(int index)
 
 void PageDriverManager::removeFromBackupIndex(int index)
 {
-    m_ListBackupIndex.removeAt(m_ListBackupIndex.indexOf(index));
+    auto ret = m_ListBackupIndex.indexOf(index);
+    if (ret >= 0) {
+        m_ListBackupIndex.removeAt(ret);
+    }
 
     if (m_ListBackupIndex.isEmpty()) {
         mp_DriverBackupInfoPage->headWidget()->setBackupBtnEnable(false);
@@ -913,8 +933,12 @@ void PageDriverManager::failAllIndex()
 
 bool PageDriverManager::networkIsOnline()
 {
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     QNetworkConfigurationManager mgr;
     return mgr.isOnline();
+#else
+    return QNetworkInformation::instance() && QNetworkInformation::instance()->reachability() == QNetworkInformation::Reachability::Disconnected;
+#endif
 }
 
 void PageDriverManager::getDownloadInfo(int progress, qint64 total, QString &speed, QString &size)
@@ -1006,7 +1030,11 @@ void PageDriverManager::getDebBackupInfo(DriverInfo *info)
                 continue;
             if (fileInfo.isFile() && fileInfo.fileName().contains(".deb") && fileInfo.fileName().contains(debname)) {
                 QString tmps = fileInfo.fileName().remove(debname).remove(".deb");
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
                 QStringList  tmpsl = tmps.split('_', QString::SkipEmptyParts);
+#else
+                QStringList  tmpsl = tmps.split('_', Qt::SkipEmptyParts);
+#endif
                 info->m_DebBackupVersion = tmpsl.first();
                 info->m_BackupFileName = fileInfo.absoluteFilePath();
             }

@@ -43,6 +43,7 @@
 #include <QDir>
 #include <QVBoxLayout>
 #include <QTimer>
+#include <QRegularExpression>
 
 DWIDGET_USE_NAMESPACE
 using namespace DDLog;
@@ -238,7 +239,7 @@ bool MainWindow::exportTo()
     QString file = DFileDialog::getSaveFileName(
                        this,
                        "Export", saveDir + tr("Device Info", "export file's name") + \
-                       QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss") .remove(QRegExp("\\s")) + ".txt", \
+                       QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss").remove(QRegularExpression("\\s")) + ".txt", \
                        "Text (*.txt);; Doc (*.docx);; Xls (*.xls);; Html (*.html)", &selectFilter);  //
 
     if (file.isEmpty())
@@ -395,7 +396,7 @@ void MainWindow::initWindowTitle()
     QIcon appIcon = QIcon::fromTheme("deepin-devicemanager");
     titlebar()->setIcon(appIcon);
     // 设置 DButtonBox 里面的 button
-    mp_ButtonBox->setFixedSize(242, 38);
+    mp_ButtonBox->setFixedWidth(242);
     mp_ButtonBox->setButtonList({new DButtonBoxButton(tr("Hardware")), new DButtonBoxButton(tr("Drivers"))}, true);
     mp_ButtonBox->setId(mp_ButtonBox->buttonList().at(0), 0);
     mp_ButtonBox->setId(mp_ButtonBox->buttonList().at(1), 1);

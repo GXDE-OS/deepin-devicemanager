@@ -5,7 +5,9 @@
 #include "DriverScanner.h"
 #include "DeviceManager.h"
 #include "HttpDriverInterface.h"
+#include "commonfunction.h"
 
+#include <QRegularExpression>
 #include <QLoggingCategory>
 #include <QProcess>
 
@@ -32,17 +34,25 @@ void DriverScanner::run()
 
             // 检测本地安装版本
             if (!info->packages().isEmpty()) {
-                QProcess process;
-                process.start("apt", QStringList()  << "policy " << info->packages());
-                process.waitForFinished(-1);
-
-                QString output = process.readAllStandardOutput();
-                QStringList lines = output.split("\n");
-                if(lines.size()>=2) {
-                    QRegExp rxlen("(\\d+\\S*)");
-                    int pos = rxlen.indexIn(lines[1]);
-                    if (pos > -1 && info->version().isEmpty()) {
-                        info->m_Version = rxlen.cap(1);
+                QString outInfo = Common::executeClientCmd("apt", QStringList() << "policy" << info->packages(), QString(), -1, false);
+                if (!outInfo.isEmpty()) {
+                    QStringList infoList = outInfo.split("\n");
+                    int index = 0;
+                    for (int i = 0; i < infoList.size(); i++)
+                    {
+                        if (infoList[i].startsWith(info->packages())) {
+                            index = i;
+                            break;
+                        }
+                    }
+                    if (infoList.size() > (2 + index) && !infoList[1 + index].contains("（") && !infoList[1 + index].contains("(")) {
+                        QRegularExpression rxlen("(\\d+\\S*)");
+                        QRegularExpressionMatch match = rxlen.match(infoList[1 + index]);
+                        QString curVersion;
+                        if (match.hasMatch()) {
+                            curVersion = match.captured(1);
+                        }
+                        info->m_Version = curVersion.trimmed();
                     }
                 }
             }
@@ -61,24 +71,6 @@ void DriverScanner::run()
     } else {
         emit scanFinished(SR_NETWORD_ERR);
     }
-
-// 测试代码
-//    foreach (DriverInfo *info, m_ListDriverInfo) {
-//        emit scanInfo(info->name(), 0);
-//        usleep(1000);
-//        emit scanInfo(info->name(), 20);
-//        usleep(1000);
-//        emit scanInfo(info->name(), 40);
-//        usleep(1000);
-//        emit scanInfo(info->name(), 60);
-//        usleep(1000);
-//        emit scanInfo(info->name(), 80);
-//        usleep(1000);
-//        emit scanInfo(info->name(), 100);
-//    }
-
-//    usleep(100);
-//    emit scanFinished(SR_SUCESS);
 }
 
 void DriverScanner::setDriverList(QList<DriverInfo *> lstInfo)

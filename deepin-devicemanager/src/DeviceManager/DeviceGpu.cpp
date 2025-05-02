@@ -8,6 +8,7 @@
 
 // Qt库文件
 #include<QLoggingCategory>
+#include <QRegularExpression>
 
 DeviceGpu::DeviceGpu()
     : DeviceBaseInfo()
@@ -89,7 +90,7 @@ void DeviceGpu::setLshwInfo(const QMap<QString, QString> &mapInfo)
     setAttribute(mapInfo, "memory", m_MemAddress);
     // setAttribute(mapInfo, "physical id", m_PhysID);
 
-    if (driverIsKernelIn(m_Driver)) {
+    if (driverIsKernelIn(m_Driver) || m_Driver.isEmpty()) {
         m_CanUninstall = false;
     }
 
@@ -148,14 +149,14 @@ bool DeviceGpu::setHwinfoInfo(const QMap<QString, QString> &mapInfo)
     setAttribute(mapInfo, "VID_PID", m_VID_PID);
     m_PhysID = m_VID_PID;
 
-    if (driverIsKernelIn(m_Driver)) {
+    if (driverIsKernelIn(m_Driver) || m_Driver.isEmpty()) {
         m_CanUninstall = false;
     }
 
     m_SysPath = mapInfo["SysFS ID"];
-    QRegExp reUniqueId = QRegExp("[a-zA-Z0-9_+-]{4}\\.(.*)");
-    if (reUniqueId.exactMatch(mapInfo["Unique ID"])) {
-        m_UniqueID = reUniqueId.cap(1);
+    QRegularExpression reUniqueId("[a-zA-Z0-9_+-]{4}\\.(.*)");
+    if (reUniqueId.match(mapInfo["Unique ID"]).hasMatch()) {
+        m_UniqueID = reUniqueId.match(mapInfo["Unique ID"]).captured(1);
     }
     // read gpu-info file
     if (!m_SysPath.isEmpty()) {
@@ -168,7 +169,11 @@ bool DeviceGpu::setHwinfoInfo(const QMap<QString, QString> &mapInfo)
             foreach (const QString &item, items) {
                 if (item.isEmpty())
                     continue;
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
                 QStringList items = allStr.split(":", QString::SkipEmptyParts);
+#else
+                QStringList items = allStr.split(":", Qt::SkipEmptyParts);
+#endif
                 if (items.size() != 2)
                     continue;
                 if (items.first().trimmed() == "VRAM total size") {
@@ -197,7 +202,11 @@ bool DeviceGpu::setHwinfoInfo(const QMap<QString, QString> &mapInfo)
             foreach (const QString &item, infos) {
                 if (item.isEmpty())
                     continue;
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
                 QStringList items = item.split(":", QString::SkipEmptyParts);
+#else
+                QStringList items = item.split(":", Qt::SkipEmptyParts);
+#endif
                 if (items.size() != 2)
                     continue;
                 if (items.first().trimmed() == "Memory Size") {
